@@ -8,17 +8,16 @@ if (!isset($_SESSION['user_id'])) {
 }
 
 $user_id = $_SESSION['user_id'];
-include('./conn/conn.php'); // Ensure the database connection is included
+include('./conn/conn.php');
 
 // Query to fetch farm and plot information along with soil condition
 $query = "
     SELECT f.FARMID, f.FARMNAME, f.FARMLOCATION, f.FARMSIZE, f.WATERSOURCE, 
        p.PLOTSIZE, p.PLOTTYPE, 
        s.SOILNAME, s.SOILCONDITION
-	FROM Farm f
-	LEFT JOIN Plot p ON f.FARMID = p.FARMID
-	LEFT JOIN SoilType s ON p.SOILTYPEID = s.SOILTYPEID
-
+    FROM Farm f
+    LEFT JOIN Plot p ON f.FARMID = p.FARMID
+    LEFT JOIN SoilType s ON p.SOILTYPEID = s.SOILTYPEID
 ";
 
 $stmt = oci_parse($conn, $query);
@@ -34,7 +33,6 @@ while ($row = oci_fetch_assoc($stmt)) {
 }
 
 // Handle Add Farm Form Submission
-// Handle Add Farm Form Submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Get form data
     $farmname = htmlspecialchars($_POST['farmname']);
@@ -46,7 +44,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $soiltype = htmlspecialchars($_POST['soiltype']);
     $soilcondition = htmlspecialchars($_POST['soilcondition']);
 
-    // Step 1: Check if the farm already exists
+    // Check if the farm already exists
     $checkQuery = "SELECT COUNT(*) FROM Farm WHERE FARMNAME = :farmname AND FARMLOCATION = :farmlocation";
     $checkStmt = oci_parse($conn, $checkQuery);
     oci_bind_by_name($checkStmt, ':farmname', $farmname);
@@ -54,72 +52,63 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     oci_execute($checkStmt);
     $row = oci_fetch_assoc($checkStmt);
 
-    // If the farm already exists, show a message and exit
     if ($row['COUNT(*)'] > 0) {
         $_SESSION['add_message'] = "This farm already exists!";
         header("Location: admin_availablefarm.php");
         exit();
     }
 
-    // Step 2: Insert query to add farm
+    // Insert farm
     $query = "
         INSERT INTO Farm (FARMNAME, FARMLOCATION, FARMSIZE, WATERSOURCE)
         VALUES (:farmname, :farmlocation, :farmsize, :watersource)
         RETURNING FARMID INTO :farm_id
     ";
 
-    // Prepare statement for Farm table
     $stmt = oci_parse($conn, $query);
     oci_bind_by_name($stmt, ':farmname', $farmname);
     oci_bind_by_name($stmt, ':farmlocation', $farmlocation);
     oci_bind_by_name($stmt, ':farmsize', $farmsize);
     oci_bind_by_name($stmt, ':watersource', $watersource);
     
-    // Variable to hold the last inserted FARMID
     $farm_id = null;
     oci_bind_by_name($stmt, ':farm_id', $farm_id, 32);
 
     if (oci_execute($stmt)) {
-        // Get the soil type id based on the selected soil type
-        $soil_type = $_POST['soiltype'];  // Assuming soiltype is passed as the selected value in the form
+        // Get soil type ID
         $query_soil = "SELECT SOILTYPEID FROM SoilType WHERE SOILNAME = :soil_name";
         $stmt_soil = oci_parse($conn, $query_soil);
-        oci_bind_by_name($stmt_soil, ':soil_name', $soil_type);
+        oci_bind_by_name($stmt_soil, ':soil_name', $soiltype);
         oci_execute($stmt_soil);
         $soil_type_id = oci_fetch_assoc($stmt_soil)['SOILTYPEID'];
 
-        // Insert data into the Plot table
+        // Insert plot (FIXED: Removed duplicate execute)
         $query_plot = "
             INSERT INTO Plot (FARMID, PLOTSIZE, PLOTTYPE, SOILTYPEID, WATERSOURCE)
             VALUES (:farm_id, :plotsize, :plottype, :soil_type_id, :watersource)
         ";
 
-        // Prepare and execute the insert
         $stmt_plot = oci_parse($conn, $query_plot);
         oci_bind_by_name($stmt_plot, ':farm_id', $farm_id);
         oci_bind_by_name($stmt_plot, ':plotsize', $plotsize);
         oci_bind_by_name($stmt_plot, ':plottype', $plottype);
         oci_bind_by_name($stmt_plot, ':soil_type_id', $soil_type_id);
         oci_bind_by_name($stmt_plot, ':watersource', $watersource);
-        oci_execute($stmt_plot);
 
+        // SINGLE EXECUTION HERE
         if (oci_execute($stmt_plot)) {
-            // Redirect or display success message
             $_SESSION['add_message'] = "Farm added successfully!";
             header("Location: admin_availablefarm.php");
             exit();
         } else {
-            // Handle error in plot insertion
             $error = oci_error($stmt_plot);
             $_SESSION['add_message'] = "Error adding plot data: " . $error['message'];
         }
     } else {
-        // Handle error in farm insertion
         $error = oci_error($stmt);
         $_SESSION['add_message'] = "Error adding farm: " . $error['message'];
     }
 }
-
 
 // Handle delete request
 if (isset($_GET['delete_farm'])) {
