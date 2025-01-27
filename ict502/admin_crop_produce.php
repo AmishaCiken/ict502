@@ -1,6 +1,6 @@
 <?php
-session_start();
 
+<<<<<<< HEAD
 if (!isset($_SESSION['user_id'])) {
     header("Location: index.php");
     exit();
@@ -24,6 +24,24 @@ $query = "SELECT
           JOIN croptype ct ON c.croptypeid = ct.croptypeid";
 
 $stmt = oci_parse($conn, $query);
+=======
+include('./conn/conn.php');  // Ensure the database connection is included
+
+// Fetch the user's crop produces from the database
+$query = "SELECT CropProduce.CropProduceID,
+                 Crop.CropID,
+                 CropType.CropTypeName,
+                 CropProduce.Quantity,
+                 CropProduce.CropProduceDate,
+                 CropProduce.CropStorageLocation
+          FROM CropProduce
+          JOIN Crop ON CropProduce.CropID = Crop.CropID
+          JOIN CropType ON Crop.CropTypeID = CropType.CropTypeID
+		   ";
+
+$stmt = oci_parse($conn, $query);
+//oci_bind_by_name($stmt, ':user_id', $user_id);
+>>>>>>> f44c63c5e7dcd208369cfa0aea496bf6efc6c67a
 oci_execute($stmt);
 
 $cropProduces = [];
@@ -101,9 +119,20 @@ if (isset($_GET['delete_cropproduce'])) {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Crop Produce Management</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <title>Admin Farm Booking Management</title>
+    <link rel="stylesheet" href="bootstrap.css">
+    <link rel="stylesheet" href="style3.css">
+    <link rel="stylesheet" href="https://pro.fontawesome.com/releases/v5.10.0/css/all.css" crossorigin="anonymous" />
+</head>
+<body class="bg-content">
+    <main class="dashboard d-flex">
+        <!-- Sidebar -->
+        <?php include "admin_sidebar.php"; ?>
+        <!-- Content Page -->
+        <div class="container-fluid px">
+            <?php include "header.php"; ?>
     <script>
         window.onload = function() {
             const alerts = document.querySelectorAll('.alert');
@@ -221,6 +250,31 @@ if (isset($_GET['delete_cropproduce'])) {
     </div>
 </div>
 
+<<<<<<< HEAD
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+=======
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteConfirmationModal" tabindex="-1" aria-labelledby="deleteConfirmationModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteConfirmationModalLabel">Confirm Deletion</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                Are you sure you want to delete this crop produce?
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Yes, Delete</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            </div>
+        </div>
+    </div>
+</div>
+<script src="script.js"></script>
+    <script src="bootstrap.bundle.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.min.js"></script>
+>>>>>>> f44c63c5e7dcd208369cfa0aea496bf6efc6c67a
 </body>
 </html>
