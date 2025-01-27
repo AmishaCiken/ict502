@@ -41,11 +41,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_cropproduce'])) {
     oci_bind_by_name($stmt, ':quantity', $quantity);
     oci_bind_by_name($stmt, ':crop_storage_location', $crop_storage_location);
 
-    oci_execute($stmt);
-    oci_commit($conn);  // Ensure data is committed
-
-    header("Location: crop_produce.php");
-    exit();
+    
+    if (oci_execute($stmt)) {
+        oci_commit($conn);
+        $_SESSION['alert_type'] = 'success';
+        $_SESSION['message'] = 'Crop added successfully!';
+        header("Location: crop_produce.php"); // Redirect to reload the page
+        exit();
+    } else {
+        $_SESSION['alert_type'] = 'error';
+        $_SESSION['message'] = 'Failed to add the produce. Please try again.';
+    }
 }
 
 // Handle delete crop produce
@@ -57,11 +63,17 @@ if (isset($_GET['delete_cropproduce'])) {
 
     oci_bind_by_name($stmt, ':cropproduce_id', $cropproduce_id);
     oci_bind_by_name($stmt, ':user_id', $user_id);
-    oci_execute($stmt);
-    oci_commit($conn);
-
-    header("Location: crop_produce.php");
-    exit();
+    
+    if (oci_execute($stmt)) {  
+        oci_commit($conn);
+        $_SESSION['alert_type'] = 'success';
+        $_SESSION['message'] = 'Crop deleted successfully!';
+        header("Location: crop_produce.php"); // Redirect to reload the page
+        exit();
+    } else {
+        $_SESSION['alert_type'] = 'error';
+        $_SESSION['message'] = 'Failed to delete the produce. Please try again.';
+    }
 }
 ?>
 
@@ -86,6 +98,16 @@ if (isset($_GET['delete_cropproduce'])) {
             <?php include "header.php"; ?>
 <div class="container my-4">
     <h2 class="text-center">Crop Produce Management</h2>
+
+    <!-- Display success or error message -->
+    <?php if (isset($_SESSION['message'])): ?>
+        <div class="alert alert-<?php echo ($_SESSION['alert_type'] == 'success') ? 'success' : 'danger'; ?> mt-3" role="alert" id="message">
+            <?php echo htmlspecialchars($_SESSION['message']); ?>
+        </div>
+        <?php unset($_SESSION['message']); ?>
+        <?php unset($_SESSION['alert_type']); ?>
+    <?php endif; ?>
+
     <div class="text-end mb-3">
         <button class="btn btn-dark" data-bs-toggle="modal" data-bs-target="#addCropProduceModal">Add Crop Produce</button>
     </div>
@@ -172,5 +194,18 @@ if (isset($_GET['delete_cropproduce'])) {
     <script src="bootstrap.bundle.js"></script>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+    // Automatically hide the alert after 2 seconds
+    window.onload = function() {
+        const message = document.getElementById('message');
+        if (message) {
+            setTimeout(function() {
+                message.style.display = 'none';
+            }, 2000);  // 2000 milliseconds = 2 seconds
+        }
+    };
+</script>
+
 </body>
 </html>

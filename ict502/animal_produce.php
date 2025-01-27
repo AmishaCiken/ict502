@@ -27,6 +27,14 @@ while (($row = oci_fetch_assoc($stmt)) != false) {
     $animalProduces[] = $row;
 }
 
+// Check for message in session
+$alert_type = isset($_SESSION['alert_type']) ? $_SESSION['alert_type'] : '';
+$message = isset($_SESSION['message']) ? $_SESSION['message'] : '';
+
+// Clear message after it is shown
+unset($_SESSION['alert_type']);
+unset($_SESSION['message']);
+
 // Handle add animal produce (inserting into the database)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_animalproduce'])) {
     $animal_id = $_POST['animal_id'];
@@ -44,28 +52,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_animalproduce']))
     oci_bind_by_name($stmt, ':storage_location', $storage_location);
     oci_bind_by_name($stmt, ':produce_type', $produce_type);
 
-    oci_execute($stmt);
-    oci_commit($conn);  // Ensure data is committed
+    if (oci_execute($stmt)) {
+        oci_commit($conn);
+        $_SESSION['alert_type'] = 'success';
+        $_SESSION['message'] = 'Produce added successfully!';
+        header("Location: animal_produce.php"); // Redirect to reload the page
+        exit();
+    } else {
+        $_SESSION['alert_type'] = 'error';
+        $_SESSION['message'] = 'Failed to add the produce. Please try again.';
+    }
 
-    header("Location: animal_produce.php");
-    exit();
 }
 
 // Handle delete animal produce
 if (isset($_GET['delete_animalproduce'])) {
-    $animalproduce_id = $_GET['delete_animalproduce'];
-    
-    $query = "DELETE FROM AnimalProduce WHERE AnimalProduceID = :animalproduce_id AND user_id = :user_id";
-    $stmt = oci_parse($conn, $query);
-    
-    oci_bind_by_name($stmt, ':animalproduce_id', $animalproduce_id);
-    oci_bind_by_name($stmt, ':user_id', $user_id);
-    oci_execute($stmt);
-    oci_commit($conn);
+    $animal_produce_id = $_GET['delete_animalproduce'];
 
-    header("Location: animal_produce.php");
-    exit();
+    $query = "DELETE FROM AnimalProduce WHERE AnimalProduceID = :animal_produce_id AND user_id = :user_id";
+    $stmt = oci_parse($conn, $query);
+
+    oci_bind_by_name($stmt, ':animal_produce_id', $animal_produce_id);
+    oci_bind_by_name($stmt, ':user_id', $user_id);
+    
+    if (oci_execute($stmt)) {
+        oci_commit($conn);
+        $_SESSION['alert_type'] = 'success';
+        $_SESSION['message'] = 'Produce deleted successfully!';
+        header("Location: animal_produce.php"); // Redirect to reload the page
+        exit();
+    } else {
+        $_SESSION['alert_type'] = 'error';
+        $_SESSION['message'] = 'Failed to delete the produce. Please try again.';
+    }
 }
+
+
 ?>
 
 <!DOCTYPE html>
@@ -89,6 +111,14 @@ if (isset($_GET['delete_animalproduce'])) {
             <?php include "header.php"; ?>
 <div class="container my-4">
     <h2 class="text-center">Animal Produce Management</h2>
+
+    <!-- Display success or error message -->
+    <?php if (isset($message)): ?>
+        <div class="alert alert-<?php echo ($alert_type == 'success') ? 'success' : 'danger'; ?> mt-3" role="alert" id="message">
+            <?php echo htmlspecialchars($message); ?>
+        </div>
+    <?php endif; ?>
+
     <div class="text-end mb-3">
         <button class="btn btn-dark" data-bs-toggle="modal" data-bs-target="#addAnimalProduceModal">Add Animal Produce</button>
     </div>
@@ -181,5 +211,18 @@ if (isset($_GET['delete_animalproduce'])) {
 <script src="script.js"></script>
     <script src="bootstrap.bundle.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+    // Automatically hide the alert after 2 seconds
+    window.onload = function() {
+        const message = document.getElementById('message');
+        if (message) {
+            setTimeout(function() {
+                message.style.display = 'none';
+            }, 2000);  // 2000 milliseconds = 2 seconds
+        }
+    };
+</script>
+
 </body>
 </html>

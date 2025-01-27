@@ -40,11 +40,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_crop'])) {
     oci_bind_by_name($stid, ':harvest_date', $harvest_date);
     oci_bind_by_name($stid, ':yield', $yield);
 
-    oci_execute($stid);
-    oci_commit($conn);  // Ensure data is committed
-
-    header("Location: crop.php");
-    exit();
+    
+    if (oci_execute($stid)) {
+        oci_commit($conn);
+        $_SESSION['alert_type'] = 'success';
+        $_SESSION['message'] = 'Crop added successfully!';
+        header("Location: crop.php"); // Redirect to reload the page
+        exit();
+    } else {
+        $_SESSION['alert_type'] = 'error';
+        $_SESSION['message'] = 'Failed to add the crop. Please try again.';
+    }
 }
 
 // Handle delete crop
@@ -56,11 +62,17 @@ if (isset($_GET['delete_crop'])) {
 
     oci_bind_by_name($stid, ':crop_id', $crop_id);
     oci_bind_by_name($stid, ':user_id', $user_id);
-    oci_execute($stid);
-    oci_commit($conn);
-
-    header("Location: crop.php");
-    exit();
+    
+    if (oci_execute($stid)) {  
+        oci_commit($conn);
+        $_SESSION['alert_type'] = 'success';
+        $_SESSION['message'] = 'Crop deleted successfully!';
+        header("Location: crop.php"); // Redirect to reload the page
+        exit();
+    } else {
+        $_SESSION['alert_type'] = 'error';
+        $_SESSION['message'] = 'Failed to delete the crop. Please try again.';
+    }
 }
 ?>
 
@@ -85,6 +97,16 @@ if (isset($_GET['delete_crop'])) {
             <?php include "header.php"; ?>
 <div class="container my-4">
     <h2 class="text-center">Crop Management</h2>
+
+    <!-- Display success or error message -->
+    <?php if (isset($_SESSION['message'])): ?>
+        <div class="alert alert-<?php echo ($_SESSION['alert_type'] == 'success') ? 'success' : 'danger'; ?> mt-3" role="alert" id="message">
+            <?php echo htmlspecialchars($_SESSION['message']); ?>
+        </div>
+        <?php unset($_SESSION['message']); ?>
+        <?php unset($_SESSION['alert_type']); ?>
+    <?php endif; ?>
+
     <div class="text-end mb-3">
         <button class="btn btn-dark" data-bs-toggle="modal" data-bs-target="#addCropModal">Add Crop</button>
     </div>
@@ -118,7 +140,7 @@ if (isset($_GET['delete_crop'])) {
                     <td colspan="6" class="text-center">No crops found.</td>
                 </tr>
             <?php endif; ?>
-            </tbody>
+        </tbody>
     </table>
 </div>
 
@@ -186,5 +208,18 @@ if (isset($_GET['delete_crop'])) {
     <script src="bootstrap.bundle.js"></script>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+    // Automatically hide the alert after 2 seconds
+    window.onload = function() {
+        const message = document.getElementById('message');
+        if (message) {
+            setTimeout(function() {
+                message.style.display = 'none';
+            }, 2000);  // 2000 milliseconds = 2 seconds
+        }
+    };
+</script>
+
 </body>
 </html>
