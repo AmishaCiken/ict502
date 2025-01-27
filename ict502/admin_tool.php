@@ -1,44 +1,62 @@
 <?php
 session_start();
 
-include('./conn/conn.php');  // Ensure the database connection is included
+include('./conn/conn.php');
 
-// Fetch the tools from the database
-$query = "SELECT t.tool_id, t.tool_name, t.tool_type, t.request_date, t.approval_date, t.status, 
-                 u.first_name, u.last_name, u.phone_number, u.email_address
+$query = "SELECT 
+            t.tool_id AS TOOL_ID,
+            t.tool_name AS TOOL_NAME,
+            t.tool_type AS TOOL_TYPE,
+            TO_CHAR(t.request_date, 'YYYY-MM-DD') AS REQUEST_DATE,
+            TO_CHAR(t.approval_date, 'YYYY-MM-DD') AS APPROVAL_DATE,
+            t.status AS STATUS,
+            u.first_name AS FIRST_NAME,
+            u.last_name AS LAST_NAME,
+            u.phone_number AS PHONE_NUMBER,
+            u.email_address AS EMAIL_ADDRESS
           FROM tools t
-          JOIN tbl_user u ON t.user_id = u.tbl_user_id";
+          LEFT JOIN tbl_user u ON t.user_id = u.tbl_user_id";
 
 $stmt = oci_parse($conn, $query);
-oci_execute($stmt);
 
-// Fetching the results
+if (!oci_execute($stmt)) {
+    $e = oci_error($stmt);
+    die("<div class='alert alert-danger'>Database error: " . htmlspecialchars($e['message']) . "</div>");
+}
+
 $tools = [];
 while ($row = oci_fetch_assoc($stmt)) {
     $tools[] = $row;
 }
 
-
 // Handle CRUD operations (Approve/Reject/Delete)
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     if (isset($_POST['approve_request'])) {
         $requestId = filter_input(INPUT_POST, 'request_id', FILTER_SANITIZE_NUMBER_INT);
-        $approvalDate = filter_input(INPUT_POST, 'approval_date', FILTER_SANITIZE_STRING);
-
-        if ($requestId && $approvalDate) {
-            $updateQuery = "UPDATE farmingSys.ToolBorrowRequest 
-                            SET Status = 'Approved', ApprovalDate = TO_DATE(:approval_date, 'YYYY-MM-DD') 
-                            WHERE ToolBorrowRequestID = :request_id AND Status = 'Pending';";
+        
+        if ($requestId) {
+            // Get current date in YYYY-MM-DD format
+            $approvalDate = date('Y-m-d');
+            
+            $updateQuery = "UPDATE tools 
+                            SET status = 'Approved', 
+                                approval_date = TO_DATE(:approval_date, 'YYYY-MM-DD') 
+                            WHERE tool_id = :request_id
+                            AND status = 'Pending'";
+            
             $stmt = oci_parse($conn, $updateQuery);
             oci_bind_by_name($stmt, ':approval_date', $approvalDate);
             oci_bind_by_name($stmt, ':request_id', $requestId);
 
             if (oci_execute($stmt)) {
                 oci_commit($conn);
-                $_SESSION['message'] = "Request approved successfully.";
+                $_SESSION['message'] = "Request approved successfully. Approval date: $approvalDate";
             } else {
                 $_SESSION['message'] = "Error approving request.";
             }
+            
+            header("Location: admin_tool.php");
+            exit();
         }
     }
 
@@ -46,9 +64,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $requestId = filter_input(INPUT_POST, 'request_id', FILTER_SANITIZE_NUMBER_INT);
 
         if ($requestId) {
-            $updateQuery = "UPDATE farmingSys.ToolBorrowRequest 
-                            SET Status = 'Rejected' 
-                            WHERE ToolBorrowRequestID = :request_id AND Status = 'Pending';";
+            $updateQuery = "UPDATE tools 
+                            SET status = 'Rejected', 
+                                approval_date = NULL 
+                            WHERE tool_id = :request_id";
+            
             $stmt = oci_parse($conn, $updateQuery);
             oci_bind_by_name($stmt, ':request_id', $requestId);
 
@@ -58,32 +78,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             } else {
                 $_SESSION['message'] = "Error rejecting request.";
             }
+            
+            header("Location: admin_tool.php");
+            exit();
         }
     }
-}
-
-// Handle delete tool request
-if (isset($_GET['delete_tool'])) {
-    $tool_id = filter_input(INPUT_GET, 'delete_tool', FILTER_SANITIZE_NUMBER_INT);
-
-    if ($tool_id) {
-        $query = "DELETE FROM tools WHERE tool_id = :tool_id";
-        $stmt = oci_parse($conn, $query);
-        oci_bind_by_name($stmt, ':tool_id', $tool_id);
-
-        if (oci_execute($stmt)) {
-            oci_commit($conn);
-            $_SESSION['message'] = "Tool deleted successfully.";
-        } else {
-            $error = oci_error($stmt);
-            $_SESSION['message'] = "Error deleting tool: " . $error['message'];
-        }
-    } else {
-        $_SESSION['message'] = "Invalid tool ID.";
-    }
-
-    header("Location: admin_tool.php");
-    exit();
 }
 
 ?>
@@ -149,10 +148,18 @@ if (isset($_GET['delete_tool'])) {
                                         <?= ucfirst($tool['STATUS']) ?>
                                     </td>
                                     <td>
-                                        <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#editToolModal"
-                                                data-toolid="<?= htmlspecialchars($tool['TOOL_ID']) ?>"
-                                                data-toolname="<?= htmlspecialchars($tool['TOOL_NAME']) ?>"
-                                                data-tooltype="<?= htmlspecialchars($tool['TOOL_TYPE']) ?>">Edit</button>
+                                        <?php if ($tool['STATUS'] == 'Pending'): ?>
+                                            <form method="POST" style="display: inline-block;">
+                                                <input type="hidden" name="request_id" value="<?= $tool['TOOL_ID'] ?>">
+                                                <button type="submit" name="approve_request" class="btn btn-success btn-sm">Approve</button>
+                                            </form>
+                                            <form method="POST" style="display: inline-block;">
+                                                <input type="hidden" name="request_id" value="<?= $tool['TOOL_ID'] ?>">
+                                                <button type="submit" name="reject_request" class="btn btn-danger btn-sm">Reject</button>
+                                            </form>
+                                        <?php else: ?>
+                                            <span class="text-muted">No actions available</span>
+                                        <?php endif; ?>
                                         <button class="btn btn-danger btn-sm" data-bs-toggle="modal" 
                                                 data-bs-target="#deleteModal" 
                                                 data-toolid="<?= htmlspecialchars($tool['TOOL_ID']) ?>">Delete</button>
