@@ -1,7 +1,6 @@
 <?php
 // Start the session and include the database connection
 session_start();
-<<<<<<< HEAD
 
 // Check if the user is logged in
 if (!isset($_SESSION['user_id'])) {
