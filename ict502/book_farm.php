@@ -1,6 +1,6 @@
 <?php
 session_start();
-include('./conn/conn.php');  // Ensure the database connection is included
+include('conn/conn.php');  // Ensure the database connection is included
 
 // Get the FarmerID from the session (assuming the user is logged in)
 $farmerID = $_SESSION['user_id'];  // Replace with your session variable

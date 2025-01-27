@@ -3,14 +3,14 @@ session_start();
 include('conn/conn.php'); // Oracle database connection
 
 // Ensure the user is logged in
-if (!isset($_SESSION['USERNAME'])) {
-    header("Location: admin_login.php");
+if (!isset($_SESSION['EMAIL_ADDRESS'])) {
+    header("Location: index.php");
     exit;
 }
 
 // Fetch the number of farmers (from TBL_USER)
-$query_admin = "SELECT COUNT(*) AS TOTAL FROM TBL_USER";
-$stmt_farmers = oci_parse($conn, $query_admin);
+$query_farmers = "SELECT COUNT(*) AS TOTAL FROM TBL_USER";
+$stmt_farmers = oci_parse($conn, $query_farmers);
 if (!$stmt_farmers) {
     die('Query failed: ' . oci_error($conn));
 }
@@ -30,27 +30,12 @@ $row_farms = oci_fetch_assoc($stmt_farms);
 $nbr_cours = $row_farms['TOTAL'];
 oci_free_statement($stmt_farms);
 
-// Fetch the number of animal produce (from FARM)
-$query_farms = "SELECT COUNT(*) AS TOTAL FROM ANIMALPRODUCE";
-$stmt_farms = oci_parse($conn, $query_farms);
-if (!$stmt_farms) {
+// Fetch the total payments (from PAYMENTS table)
+$query_payments = "SELECT SUM(PAYMENT_AMOUNT) AS TOTAL_PAYMENTS FROM PAYMENTS";
+$stmt_payments = oci_parse($conn, $query_payments);
+if (!$stmt_payments) {
     die('Query failed: ' . oci_error($conn));
 }
-oci_execute($stmt_farms);
-$row_farms = oci_fetch_assoc($stmt_farms);
-$nbr_cours = $row_farms['TOTAL'];
-oci_free_statement($stmt_farms);
-
-// Fetch the number of crop produce (from FARM)
-$query_farms = "SELECT COUNT(*) AS TOTAL FROM CROPPRODUCE";
-$stmt_farms = oci_parse($conn, $query_farms);
-if (!$stmt_farms) {
-    die('Query failed: ' . oci_error($conn));
-}
-oci_execute($stmt_farms);
-$row_farms = oci_fetch_assoc($stmt_farms);
-$nbr_cours = $row_farms['TOTAL'];
-oci_free_statement($stmt_farms);
 
 // Close database connection
 oci_close($conn);
@@ -71,7 +56,7 @@ oci_close($conn);
 <body class="bg-content">
     <main class="dashboard d-flex">
         <!-- Sidebar -->
-        <?php include "admin_sidebar.php"; ?>
+        <?php include "sidebar.php"; ?>
 
         <!-- Content Page -->
         <div class="container-fluid px">

@@ -11,8 +11,6 @@ if (!isset($_SESSION['user_id'])) {
 $user_id = $_SESSION['user_id'];
 
 // database connection
-=======
->>>>>>> f44c63c5e7dcd208369cfa0aea496bf6efc6c67a
 include('./conn/conn.php');
 
 // Fetch all animals from the database
