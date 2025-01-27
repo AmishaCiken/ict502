@@ -1,11 +1,15 @@
 <?php
 session_start();
+
+// Check if the user is logged in
 if (!isset($_SESSION['user_id'])) {
     header("Location: index.php");
     exit();
 }
 
 $user_id = $_SESSION['user_id'];
+
+// database connection
 include('./conn/conn.php');
 
 // Fetch all animals from the database
@@ -22,6 +26,7 @@ if (!oci_execute($stmt)) {
     exit();
 }
 
+// Store results in an array
 $animals = [];
 while ($row = oci_fetch_assoc($stmt)) {
     $animals[] = $row;
