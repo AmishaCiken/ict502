@@ -1,12 +1,6 @@
 <?php
 session_start();
 
-if (!isset($_SESSION['user_id'])) {
-    header("Location: index.php");
-    exit();
-}
-
-$user_id = $_SESSION['user_id'];
 include('./conn/conn.php');  // Ensure the database connection is included
 
 // Handle form submission to add a new tool
@@ -50,22 +44,21 @@ while ($row = oci_fetch_assoc($stmt)) {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Add Tool</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
-    <script>
-        // JavaScript to hide success message after 3 seconds
-        window.onload = function() {
-            const successMessage = document.getElementById('successMessage');
-            if (successMessage) {
-                setTimeout(function() {
-                    successMessage.style.display = 'none';
-                }, 3000);  // Hide after 3 seconds
-            }
-        };
-    </script>
+    <title>Dashboard</title>
+    <link rel="stylesheet" href="bootstrap.css">
+    <link rel="stylesheet" href="style3.css">
+    <link rel="stylesheet" href="https://pro.fontawesome.com/releases/v5.10.0/css/all.css"
+        integrity="sha384-AYmEC3Yw5cVb3ZcuHtOA93w35dYTsvhLPVnYs9eStHfGJvOvKxVfELGroGkvsg+p" crossorigin="anonymous" />
 </head>
-<body>
+<body class="bg-content">
+    <main class="dashboard d-flex">
+        <!-- Sidebar -->
+        <?php include "admin_sidebar.php"; ?>
+         <!-- Content Page -->
+         <div class="container-fluid px">
+            <?php include "header.php"; ?>
 <div class="container my-4">
     <h2 class="text-center">Admin Add Tool</h2>
 
@@ -122,7 +115,8 @@ while ($row = oci_fetch_assoc($stmt)) {
     <!-- Back Button Below the Table -->
     <a href="admin_tool.php" class="btn btn-secondary">Back to Tool Management</a>
 </div>
-
+<script src="script.js"></script>
+<script src="bootstrap.bundle.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

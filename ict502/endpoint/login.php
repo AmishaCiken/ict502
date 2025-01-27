@@ -28,7 +28,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             echo "
             <script>
                 alert('Login Successfully!');
-                window.location.href = 'http://localhost/ict502/animal.php';
+                window.location.href = 'http://localhost/ict502/ict502/user_dashboard.php';
             </script>
             ";
         } else {

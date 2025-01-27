@@ -1,12 +1,5 @@
 <?php
-session_start();
 
-if (!isset($_SESSION['user_id'])) {
-    header("Location: index.php");
-    exit();
-}
-
-$user_id = $_SESSION['user_id'];
 include('./conn/conn.php');  // Ensure the database connection is included
 
 // Fetch the user's crop produces from the database
@@ -19,10 +12,10 @@ $query = "SELECT CropProduce.CropProduceID,
           FROM CropProduce
           JOIN Crop ON CropProduce.CropID = Crop.CropID
           JOIN CropType ON Crop.CropTypeID = CropType.CropTypeID
-          WHERE CropProduce.user_id = :user_id";
+		   ";
 
 $stmt = oci_parse($conn, $query);
-oci_bind_by_name($stmt, ':user_id', $user_id);
+//oci_bind_by_name($stmt, ':user_id', $user_id);
 oci_execute($stmt);
 
 // Fetching the results
@@ -84,9 +77,20 @@ if (isset($_GET['delete_cropproduce'])) {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Crop Produce Management</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <title>Admin Farm Booking Management</title>
+    <link rel="stylesheet" href="bootstrap.css">
+    <link rel="stylesheet" href="style3.css">
+    <link rel="stylesheet" href="https://pro.fontawesome.com/releases/v5.10.0/css/all.css" crossorigin="anonymous" />
+</head>
+<body class="bg-content">
+    <main class="dashboard d-flex">
+        <!-- Sidebar -->
+        <?php include "admin_sidebar.php"; ?>
+        <!-- Content Page -->
+        <div class="container-fluid px">
+            <?php include "header.php"; ?>
     <script>
         // JavaScript function to hide success message after 3 seconds
         window.onload = function() {
@@ -232,7 +236,8 @@ if (isset($_GET['delete_cropproduce'])) {
         </div>
     </div>
 </div>
-
+<script src="script.js"></script>
+    <script src="bootstrap.bundle.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.min.js"></script>
 </body>

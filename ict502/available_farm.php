@@ -29,9 +29,21 @@ while ($row = oci_fetch_assoc($stid)) {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Available Farms</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <title>Available Farm</title>
+    <link rel="stylesheet" href="bootstrap.css">
+    <link rel="stylesheet" href="style3.css">
+    <link rel="stylesheet" href="https://pro.fontawesome.com/releases/v5.10.0/css/all.css"
+        integrity="sha384-AYmEC3Yw5cVb3ZcuHtOA93w35dYTsvhLPVnYs9eStHfGJvOvKxVfELGroGkvsg+p" crossorigin="anonymous" />
+
+<body class="bg-content">
+    <main class="dashboard d-flex">
+        <!-- Sidebar -->
+        <?php include "sidebar.php"; ?>
+         <!-- Content Page -->
+         <div class="container-fluid px">
+            <?php include "header.php"; ?>
     <style>
         .content-box {
             background-color: #ffffff;
@@ -95,6 +107,8 @@ while ($row = oci_fetch_assoc($stid)) {
             </div>
         </div>
     </div>
+    <script src="script.js"></script>
+    <script src="bootstrap.bundle.js"></script>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
 </body>

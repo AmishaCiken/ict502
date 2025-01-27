@@ -1,21 +1,14 @@
 <?php
 session_start();
-
-if (!isset($_SESSION['user_id'])) {
-    header("Location: index.php");
-    exit();
-}
-
-$user_id = $_SESSION['user_id'];
 include('./conn/conn.php');
 
-// Fetch the user's farm bookings from the database
+// Fetch all bookings from the database
 $query = "SELECT FarmBooking.FarmBookingID, 
                  Farm.FarmName, 
                  FarmBooking.RequestDate, 
                  FarmBooking.Status, 
-                 FarmBooking.BookingPrice,
-                 FarmBooking.FARMERID, 
+                 FarmBooking.BookingPrice, 
+                 FarmBooking.FarmerID, 
                  FarmBooking.ApprovalDate
           FROM FarmBooking 
           JOIN Farm ON FarmBooking.FarmID = Farm.FarmID";
@@ -23,70 +16,13 @@ $query = "SELECT FarmBooking.FarmBookingID,
 $stmt = oci_parse($conn, $query);
 if (!oci_execute($stmt)) {
     $e = oci_error($stmt);
-    echo "Error executing query: " . $e['message'];
+    echo "Error executing query: " . htmlspecialchars($e['message']);
     exit();
 }
 
 $bookings = [];
 while (($row = oci_fetch_assoc($stmt)) != false) {
     $bookings[] = $row;
-}
-
-
-// Handle add booking
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_booking'])) {
-    // Collect form data
-    $farm_id = $_POST['farm_id']; // Farm ID passed from hidden input field
-    $booking_price = $_POST['booking_price'];
-    $status = $_POST['status'];
-
-    // Check if the farm ID is empty
-    if (empty($farm_id)) {
-        $_SESSION['error_message'] = "Farm ID cannot be empty. Please select a valid farm.";
-        header("Location: admin_bookingFarm.php");
-        exit();
-    }
-
-    // Ensure the user ID is set
-    if (!isset($user_id)) {
-        echo "User ID is not set.";
-        exit();
-    }
-
-    // Fetch the next value for FarmBookingID
-    $query = "SELECT FarmBookingSeq.NEXTVAL AS new_id FROM dual";
-    $stmt = oci_parse($conn, $query);
-    if (!oci_execute($stmt)) {
-        $e = oci_error($stmt);
-        echo "Error executing sequence query: " . $e['message'];
-        exit();
-    }
-
-    $row = oci_fetch_assoc($stmt);
-    $new_booking_id = $row['NEW_ID'];
-
-    // Insert the booking into the database
-    $query = "INSERT INTO FarmBooking (FarmBookingID, FARMERID, FarmID, BookingPrice, RequestDate, Status)
-              VALUES (:booking_id, :user_id, :farm_id, :booking_price, SYSDATE, :status)";
-    $stmt = oci_parse($conn, $query);
-    oci_bind_by_name($stmt, ':booking_id', $new_booking_id);
-    oci_bind_by_name($stmt, ':user_id', $user_id);
-    oci_bind_by_name($stmt, ':farm_id', $farm_id);
-    oci_bind_by_name($stmt, ':booking_price', $booking_price);
-    oci_bind_by_name($stmt, ':status', $status);
-
-    // Execute the statement and handle success or failure
-    if (oci_execute($stmt)) {
-        oci_commit($conn); // Commit the transaction
-        $_SESSION['success_message'] = "Farm booking added successfully.";
-        header("Location: admin_bookingFarm.php"); // Redirect to the booking management page
-        exit(); // Make sure the script stops executing
-    } else {
-        $e = oci_error($stmt);
-        $_SESSION['error_message'] = "Error adding farm booking: " . htmlspecialchars($e['message']);
-        header("Location: admin_bookingFarm.php"); // Redirect back to the management page with error message
-        exit();
-    }
 }
 
 // Handle delete farm booking with confirmation
@@ -100,13 +36,61 @@ if (isset($_POST['delete_booking'])) {
     if (oci_execute($stmt)) {
         oci_commit($conn);
         $_SESSION['delete_message'] = "Booking deleted successfully.";
-        $_SESSION['delete_message_class'] = "alert-success"; // Success message (green)
         header("Location: admin_bookingFarm.php");
         exit();
     } else {
         $e = oci_error($stmt);
-        $_SESSION['delete_message'] = "Error deleting booking: " . htmlspecialchars($e['message']);
-        $_SESSION['delete_message_class'] = "alert-danger"; // Error message (red)
+        $_SESSION['error_message'] = "Error deleting booking: " . htmlspecialchars($e['message']);
+        header("Location: admin_bookingFarm.php");
+        exit();
+    }
+}
+
+// Handle CRUD operations (Approve/Reject)
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    if (isset($_POST['approve_booking'])) {
+        // Approve farm booking
+        $approvalDate = $_POST['approval_date'];
+        $bookingId = $_POST['booking_id'];
+
+        // Validate date format
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $approvalDate)) {
+            $updateQuery = "UPDATE FarmBooking 
+                            SET Status = 'Approved', 
+                                ApprovalDate = TO_DATE(:approvalDate, 'YYYY-MM-DD') 
+                            WHERE FarmBookingID = :bookingId";
+            $stid = oci_parse($conn, $updateQuery);
+            oci_bind_by_name($stid, ':approvalDate', $approvalDate);
+            oci_bind_by_name($stid, ':bookingId', $bookingId);
+
+            if (oci_execute($stid)) {
+                oci_commit($conn);
+                $_SESSION['success_message'] = "Booking approved successfully.";
+            } else {
+                $e = oci_error($stid);
+                $_SESSION['error_message'] = "Error approving booking: " . htmlspecialchars($e['message']);
+            }
+        } else {
+            $_SESSION['error_message'] = "Invalid date format. Please use YYYY-MM-DD.";
+        }
+        header("Location: admin_bookingFarm.php");
+        exit();
+    }
+
+    if (isset($_POST['reject_booking'])) {
+        // Reject farm booking
+        $bookingId = $_POST['booking_id'];
+        $updateQuery = "UPDATE FarmBooking SET Status = 'Rejected' WHERE FarmBookingID = :bookingId";
+        $stid = oci_parse($conn, $updateQuery);
+        oci_bind_by_name($stid, ':bookingId', $bookingId);
+
+        if (oci_execute($stid)) {
+            oci_commit($conn);
+            $_SESSION['success_message'] = "Booking rejected successfully.";
+        } else {
+            $e = oci_error($stid);
+            $_SESSION['error_message'] = "Error rejecting booking: " . htmlspecialchars($e['message']);
+        }
         header("Location: admin_bookingFarm.php");
         exit();
     }
@@ -117,148 +101,114 @@ if (isset($_POST['delete_booking'])) {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Farm Booking Management</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <title>Admin Farm Booking Management</title>
+    <link rel="stylesheet" href="bootstrap.css">
+    <link rel="stylesheet" href="style3.css">
+    <link rel="stylesheet" href="https://pro.fontawesome.com/releases/v5.10.0/css/all.css" crossorigin="anonymous" />
 </head>
-<body>
-<div class="container my-4">
-    <h2 class="text-center">Admin Farm Booking Management</h2>
+<body class="bg-content">
+    <main class="dashboard d-flex">
+        <!-- Sidebar -->
+        <?php include "admin_sidebar.php"; ?>
+        <!-- Content Page -->
+        <div class="container-fluid px">
+            <?php include "header.php"; ?>
+            <div class="container my-4">
+                <h2 class="text-center">Admin Farm Booking Management</h2>
 
-    <?php
-    if (isset($_SESSION['success_message'])) {
-        echo '<div id="successMessage" class="alert alert-success">' . $_SESSION['success_message'] . '</div>';
-        unset($_SESSION['success_message']);
-    }
+                <!-- Display success or error messages -->
+                <?php
+                if (isset($_SESSION['success_message'])) {
+                    echo '<div class="alert alert-success">' . $_SESSION['success_message'] . '</div>';
+                    unset($_SESSION['success_message']);
+                }
+                if (isset($_SESSION['error_message'])) {
+                    echo '<div class="alert alert-danger">' . $_SESSION['error_message'] . '</div>';
+                    unset($_SESSION['error_message']);
+                }
+                ?>
 
-    if (isset($_SESSION['error_message'])) {
-        echo '<div class="alert alert-danger">' . $_SESSION['error_message'] . '</div>';
-        unset($_SESSION['error_message']);
-    }
-
-    if (isset($_SESSION['delete_message'])) {
-        echo '<div class="alert alert-success">' . $_SESSION['delete_message'] . '</div>';
-        unset($_SESSION['delete_message']);
-    }
-    ?>
-
-    <div class="text-end mb-3">
-        <button class="btn btn-dark" data-bs-toggle="modal" data-bs-target="#addBookingModal">Add Farm Booking</button>
-    </div>
-
-    <table class="table table-bordered table-striped">
-        <thead>
-        <tr>
-            <th>Farm Name</th>
-            <th>User ID</th>
-            <th>Booking Price</th>
-            <th>Request Date</th>
-            <th>Status</th>
-            <th>Approval Date</th> 
-            <th>Actions</th>
-        </tr>
-        </thead>
-        <tbody>
-        <?php if (!empty($bookings)): ?>
-            <?php foreach ($bookings as $booking): ?>
-                <tr>
-                    <td><?= htmlspecialchars($booking['FARMNAME']) ?></td>
-                    <td><?= htmlspecialchars($booking['FARMERID']) ?></td>
-                    <td><?= htmlspecialchars($booking['BOOKINGPRICE']) ?></td>
-                    <td><?= htmlspecialchars($booking['REQUESTDATE']) ?></td>
-                    <td><?= htmlspecialchars($booking['STATUS']) ?></td>
-                    <td>
-                        <?php if ($booking['STATUS'] == 'Approved'): ?>
-                            <?= htmlspecialchars($booking['APPROVALDATE']) ?> <!-- Display Approval Date if status is Approved -->
+                <table class="table table-bordered table-striped">
+                    <thead>
+                        <tr>
+                            <th>Farm Name</th>
+                            <th>Farmer ID</th>
+                            <th>Booking Price</th>
+                            <th>Request Date</th>
+                            <th>Status</th>
+                            <th>Approval Date</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php if (!empty($bookings)): ?>
+                            <?php foreach ($bookings as $booking): ?>
+                                <tr>
+                                    <td><?= htmlspecialchars($booking['FARMNAME']) ?></td>
+                                    <td><?= htmlspecialchars($booking['FARMERID']) ?></td>
+                                    <td><?= htmlspecialchars($booking['BOOKINGPRICE']) ?></td>
+                                    <td><?= htmlspecialchars($booking['REQUESTDATE']) ?></td>
+                                    <td><?= htmlspecialchars($booking['STATUS']) ?></td>
+                                    <td><?= $booking['STATUS'] == 'Approved' ? htmlspecialchars($booking['APPROVALDATE']) : 'N/A' ?></td>
+                                    <td>
+                                        <?php if ($booking['STATUS'] == 'Pending'): ?>
+                                            <form action="admin_bookingFarm.php" method="POST" style="display:inline;">
+                                                <input type="hidden" name="booking_id" value="<?= htmlspecialchars($booking['FARMBOOKINGID']) ?>">
+                                                <input type="date" name="approval_date" required>
+                                                <button type="submit" name="approve_booking" class="btn btn-success btn-sm">Approve</button>
+                                            </form>
+                                            <form action="admin_bookingFarm.php" method="POST" style="display:inline;">
+                                                <input type="hidden" name="booking_id" value="<?= htmlspecialchars($booking['FARMBOOKINGID']) ?>">
+                                                <button type="submit" name="reject_booking" class="btn btn-warning btn-sm">Reject</button>
+                                            </form>
+                                        <?php endif; ?>
+                                        <a href="javascript:void(0);" onclick="confirmDelete(<?= htmlspecialchars($booking['FARMBOOKINGID']) ?>)" class="btn btn-danger btn-sm">Delete</a>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
                         <?php else: ?>
-                            N/A <!-- Show N/A if not approved -->
+                            <tr>
+                                <td colspan="7" class="text-center">No farm bookings found.</td>
+                            </tr>
                         <?php endif; ?>
-                    </td>
-                    <td>
-                        <a href="javascript:void(0);" onclick="confirmDelete(<?= htmlspecialchars($booking['FARMBOOKINGID']) ?>)" class="btn btn-danger btn-sm">Delete</a>
-                    </td>
-                </tr>
-            <?php endforeach; ?>
-        <?php else: ?>
-            <tr>
-                <td colspan="7" class="text-center">No farm bookings found.</td>
-            </tr>
-        <?php endif; ?>
-        </tbody>
-    </table>
+                    </tbody>
+                </table>
+            </div>
 
-</div>
-
-<!-- Add Farm Booking Modal -->
-<div class="modal fade" id="addBookingModal" tabindex="-1" aria-labelledby="addBookingModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <form method="POST" action="">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="addBookingModalLabel">Add Farm Booking</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <!-- Farm Name Input -->
-                    <div class="mb-3">
-                        <label for="farm_name" class="form-label">Search Farm</label>
-                        <input type="text" class="form-control" id="farm_name" name="farm_name" placeholder="Search Farm" required>
-                        <input type="hidden" id="farm_id" name="farm_id" value=""> <!-- Hidden field for farm ID -->
-                        <div id="farm_suggestions"></div> <!-- Suggestions list -->
-                    </div>
-
-                    <!-- Booking Price -->
-                    <div class="mb-3">
-                        <label for="booking_price" class="form-label">Booking Price</label>
-                        <input type="number" class="form-control" id="booking_price" name="booking_price" required>
-                    </div>
-
-                    <!-- Booking Status -->
-                    <div class="mb-3">
-                        <label for="status" class="form-label">Booking Status</label>
-                        <input type="text" class="form-control" id="status" name="status" required>
+            <!-- Delete Confirmation Modal -->
+            <div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <form method="POST" action="">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="deleteModalLabel">Delete Farm Booking</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <p>Are you sure you want to delete this booking?</p>
+                                <input type="hidden" id="booking_id" name="FarmBookingID">
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                <button type="submit" name="delete_booking" class="btn btn-danger">Delete</button>
+                            </div>
+                        </form>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                    <button type="submit" name="add_booking" class="btn btn-primary">Add Booking</button>
-                </div>
-            </form>
+            </div>
+
         </div>
-    </div>
-</div>
+    </main>
 
-<!-- Delete Confirmation Modal -->
-<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <form method="POST" action="">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="deleteModalLabel">Delete Farm Booking</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <p>Are you sure you want to delete this booking?</p>
-                    <input type="hidden" id="booking_id" name="FarmBookingID">
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" name="delete_booking" class="btn btn-danger">Delete</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-<script>
-    // Function to handle delete confirmation
-    function confirmDelete(bookingId) {
-        document.getElementById('booking_id').value = bookingId; // Set booking ID
-        const deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
-        deleteModal.show(); // Show the modal
-    }
-</script>
-
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="bootstrap.bundle.js"></script>
+    <script>
+        function confirmDelete(bookingId) {
+            document.getElementById('booking_id').value = bookingId;
+            const deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
+            deleteModal.show();
+        }
+    </script>
 </body>
 </html>

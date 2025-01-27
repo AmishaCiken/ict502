@@ -1,11 +1,5 @@
 <?php
 session_start();
-if (!isset($_SESSION['user_id'])) {
-    header("Location: index.php");
-    exit();
-}
-
-$user_id = $_SESSION['user_id'];
 
 // Ensure the database connection is included
 include('./conn/conn.php');
@@ -53,6 +47,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_crop'])) {
     exit();
 }
 
+// Update crop (UPDATE)
+if (isset($_POST['updateCrop'])) {
+    $cropID = $_POST['cropID'];
+    $plotID = $_POST['plotID'];
+    $cropTypeID = $_POST['cropTypeID'];
+    $plantingDate = $_POST['plantingDate'];
+    $harvestDate = $_POST['harvestDate'];
+    $yield = $_POST['yield'];
+
+    $sql = "UPDATE farmingSys.Crop SET PlotID = :plotID, CropTypeID = :cropTypeID, 
+            PlantingDate = TO_DATE(:plantingDate, 'YYYY-MM-DD'), HarvestDate = TO_DATE(:harvestDate, 'YYYY-MM-DD'), Yield = :yield
+            WHERE CropID = :cropID";
+    $stid = oci_parse($conn, $sql);
+    oci_bind_by_name($stid, ":plotID", $plotID);
+    oci_bind_by_name($stid, ":cropTypeID", $cropTypeID);
+    oci_bind_by_name($stid, ":plantingDate", $plantingDate);
+    oci_bind_by_name($stid, ":harvestDate", $harvestDate);
+    oci_bind_by_name($stid, ":yield", $yield);
+    oci_bind_by_name($stid, ":cropID", $cropID);
+    oci_execute($stid);
+
+    header("Location: crop_crud.php");
+}
 // Handle delete Crop
 if (isset($_GET['delete_crop'])) {
     $crop_id = $_GET['delete_crop'];
@@ -78,9 +95,21 @@ if (isset($_GET['delete_crop'])) {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Crop Management</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <title>Crop Produce Management</title>
+    <link rel="stylesheet" href="bootstrap.css">
+    <link rel="stylesheet" href="style3.css">
+    <link rel="stylesheet" href="https://pro.fontawesome.com/releases/v5.10.0/css/all.css"
+        integrity="sha384-AYmEC3Yw5cVb3ZcuHtOA93w35dYTsvhLPVnYs9eStHfGJvOvKxVfELGroGkvsg+p" crossorigin="anonymous" />
+</head>
+<body class="bg-content">
+    <main class="dashboard d-flex">
+        <!-- Sidebar -->
+        <?php include "admin_sidebar.php"; ?>
+         <!-- Content Page -->
+         <div class="container-fluid px">
+            <?php include "header.php"; ?>
     <script>
         // JavaScript function to hide success message after 3 seconds
         window.onload = function() {
@@ -142,6 +171,7 @@ if (isset($_GET['delete_crop'])) {
                         <td><?= htmlspecialchars($crop['HARVESTDATE'] ?? 'N/A') ?></td>
                         <td><?= htmlspecialchars($crop['YIELD'] ?? 'N/A') ?></td>
                         <td>
+                        <a href="admin_crop.php?updateCropID=<?php echo $crop['CROPID']; ?>">Edit</a> |
                             <a href="javascript:void(0);" onclick="confirmDelete(<?= htmlspecialchars($crop['CROPID']) ?>)" class="btn btn-danger btn-sm">Delete</a>
                         </td>
                     </tr>
@@ -234,7 +264,8 @@ if (isset($_GET['delete_crop'])) {
         </div>
     </div>
 </div>
-
+<script src="script.js"></script>
+    <script src="bootstrap.bundle.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
