@@ -14,7 +14,9 @@ $query = "SELECT FarmBooking.FarmBookingID,
                  Farm.FarmName, 
                  FarmBooking.RequestDate, 
                  FarmBooking.Status, 
-                 FarmBooking.BookingPrice 
+                 FarmBooking.BookingPrice,
+                 FarmBooking.FARMERID, 
+                 FarmBooking.ApprovalDate
           FROM FarmBooking 
           JOIN Farm ON FarmBooking.FarmID = Farm.FarmID";
 
@@ -29,6 +31,7 @@ $bookings = [];
 while (($row = oci_fetch_assoc($stmt)) != false) {
     $bookings[] = $row;
 }
+
 
 // Handle add booking
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_booking'])) {
@@ -90,19 +93,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_booking'])) {
 if (isset($_POST['delete_booking'])) {
     $FarmBookingID = $_POST['FarmBookingID'];
 
-    $query = "DELETE FROM FarmBooking WHERE FarmBookingID = :FarmBookingID AND FARMERID = :user_id";
+    $query = "DELETE FROM FarmBooking WHERE FarmBookingID = :FarmBookingID";
     $stmt = oci_parse($conn, $query);
     oci_bind_by_name($stmt, ':FarmBookingID', $FarmBookingID);
-    oci_bind_by_name($stmt, ':user_id', $user_id);
 
     if (oci_execute($stmt)) {
         oci_commit($conn);
         $_SESSION['delete_message'] = "Booking deleted successfully.";
+        $_SESSION['delete_message_class'] = "alert-success"; // Success message (green)
         header("Location: admin_bookingFarm.php");
         exit();
     } else {
         $e = oci_error($stmt);
-        echo "Error deleting farm booking: " . htmlspecialchars($e['message']);
+        $_SESSION['delete_message'] = "Error deleting booking: " . htmlspecialchars($e['message']);
+        $_SESSION['delete_message_class'] = "alert-danger"; // Error message (red)
+        header("Location: admin_bookingFarm.php");
+        exit();
     }
 }
 ?>
@@ -144,9 +150,11 @@ if (isset($_POST['delete_booking'])) {
         <thead>
         <tr>
             <th>Farm Name</th>
+            <th>User ID</th>
             <th>Booking Price</th>
             <th>Request Date</th>
             <th>Status</th>
+            <th>Approval Date</th> 
             <th>Actions</th>
         </tr>
         </thead>
@@ -155,22 +163,30 @@ if (isset($_POST['delete_booking'])) {
             <?php foreach ($bookings as $booking): ?>
                 <tr>
                     <td><?= htmlspecialchars($booking['FARMNAME']) ?></td>
+                    <td><?= htmlspecialchars($booking['FARMERID']) ?></td>
                     <td><?= htmlspecialchars($booking['BOOKINGPRICE']) ?></td>
                     <td><?= htmlspecialchars($booking['REQUESTDATE']) ?></td>
                     <td><?= htmlspecialchars($booking['STATUS']) ?></td>
                     <td>
-						<!-- Delete button with confirmation -->
-						<a href="javascript:void(0);" onclick="confirmDelete(<?= htmlspecialchars($booking['FARMBOOKINGID']) ?>)" class="btn btn-danger btn-sm">Delete</a>
-					</td>
+                        <?php if ($booking['STATUS'] == 'Approved'): ?>
+                            <?= htmlspecialchars($booking['APPROVALDATE']) ?> <!-- Display Approval Date if status is Approved -->
+                        <?php else: ?>
+                            N/A <!-- Show N/A if not approved -->
+                        <?php endif; ?>
+                    </td>
+                    <td>
+                        <a href="javascript:void(0);" onclick="confirmDelete(<?= htmlspecialchars($booking['FARMBOOKINGID']) ?>)" class="btn btn-danger btn-sm">Delete</a>
+                    </td>
                 </tr>
             <?php endforeach; ?>
         <?php else: ?>
             <tr>
-                <td colspan="5" class="text-center">No farm bookings found.</td>
+                <td colspan="7" class="text-center">No farm bookings found.</td>
             </tr>
         <?php endif; ?>
         </tbody>
     </table>
+
 </div>
 
 <!-- Add Farm Booking Modal -->
@@ -235,13 +251,12 @@ if (isset($_POST['delete_booking'])) {
 </div>
 
 <script>
-    // Handle delete button click in modal
-    const deleteModal = document.getElementById('deleteModal');
-    deleteModal.addEventListener('show.bs.modal', function (event) {
-        const button = event.relatedTarget;
-        const bookingId = button.getAttribute('data-booking-id');
-        document.getElementById('booking_id').value = bookingId;
-    });
+    // Function to handle delete confirmation
+    function confirmDelete(bookingId) {
+        document.getElementById('booking_id').value = bookingId; // Set booking ID
+        const deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
+        deleteModal.show(); // Show the modal
+    }
 </script>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
