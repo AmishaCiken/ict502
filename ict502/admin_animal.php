@@ -6,19 +6,15 @@ if (!isset($_SESSION['user_id'])) {
 }
 
 $user_id = $_SESSION['user_id'];
-
-// Include the database connection
 include('./conn/conn.php');
 
-// Fetch the user's animals from the database
-$query = "SELECT Animal.AnimalID, Farm.FarmName, AnimalType.AnimalTypeName, Animal.HealthStatus 
-          FROM Animal 
+// Fetch all animals from the database
+$query = "SELECT Animal.AnimalID, Farm.FarmName, AnimalType.AnimalTypeName, Animal.HealthStatus, Animal.USER_ID 
+          FROM Animal
           JOIN Farm ON Animal.FarmID = Farm.FarmID
-          JOIN AnimalType ON Animal.AnimalTypeID = AnimalType.AnimalTypeID
-          WHERE Animal.user_id = :user_id";
+          JOIN AnimalType ON Animal.AnimalTypeID = AnimalType.AnimalTypeID";
 
 $stmt = oci_parse($conn, $query);
-oci_bind_by_name($stmt, ':user_id', $user_id);
 
 if (!oci_execute($stmt)) {
     $e = oci_error($stmt);
@@ -36,11 +32,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_animal'])) {
     $farm_id = $_POST['farm_id'] ?? null;
     $animal_type_id = $_POST['animal_type_id'] ?? null;
     $health_status = $_POST['health_status'] ?? null;
-    $user_id = $_SESSION['user_id'];  // Assuming user is logged in and user_id is set in session.
+    $user_id = $_POST['user_id'] ?? null;
 
-    // Ensure all fields are filled
     if ($farm_id && $animal_type_id && $health_status && $user_id) {
-        // Add animal to the database
         $query = "INSERT INTO Animal (FarmID, AnimalTypeID, HealthStatus, USER_ID) 
                   VALUES (:farm_id, :animal_type_id, :health_status, :user_id)";
 
@@ -51,8 +45,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_animal'])) {
         oci_bind_by_name($stmt, ':user_id', $user_id);
 
         if (oci_execute($stmt)) {
-            oci_commit($conn);  // Ensure data is committed to the database
-            header("Location: admin_animal.php");  // Redirect after adding the animal
+            oci_commit($conn);
+            header("Location: admin_animal.php");
             exit();
         } else {
             $e = oci_error($stmt);
@@ -67,22 +61,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_animal'])) {
 if (isset($_GET['delete_animal'])) {
     $animal_id = $_GET['delete_animal'];
 
-    $query = "DELETE FROM Animal WHERE AnimalID = :animal_id AND user_id = :user_id";
-    $stmt = oci_parse($conn, $query);
-    oci_bind_by_name($stmt, ':animal_id', $animal_id);
-    oci_bind_by_name($stmt, ':user_id', $user_id);
+    // Check if the animal has associated animal produce
+    $checkProduceQuery = "SELECT COUNT(*) FROM AnimalProduce WHERE AnimalID = :animal_id";
+    $checkStmt = oci_parse($conn, $checkProduceQuery);
+    oci_bind_by_name($checkStmt, ':animal_id', $animal_id);
+    oci_execute($checkStmt);
+    $row = oci_fetch_assoc($checkStmt);
+    $produce_count = $row['COUNT(*)'];
 
-    if (oci_execute($stmt)) {
-        oci_commit($conn);
-        $_SESSION['delete_message'] = "Animal deleted successfully.";  // Set success message
-        header("Location: admin_animal.php");  // Redirect to show the success message
+    if ($produce_count > 0) {
+        $_SESSION['delete_message'] = "This animal has associated animal produce and cannot be deleted.";
+        $_SESSION['delete_message_class'] = "alert-danger";
+        header("Location: admin_animal.php");
         exit();
     } else {
-        $e = oci_error($stmt);
-        echo "Error deleting animal: " . htmlspecialchars($e['message']);
+        $query = "DELETE FROM Animal WHERE AnimalID = :animal_id";
+        $stmt = oci_parse($conn, $query);
+        oci_bind_by_name($stmt, ':animal_id', $animal_id);
+
+        if (oci_execute($stmt)) {
+            oci_commit($conn);
+            $_SESSION['delete_message'] = "Animal deleted successfully.";
+            $_SESSION['delete_message_class'] = "alert-success";
+            header("Location: admin_animal.php");
+            exit();
+        } else {
+            $e = oci_error($stmt);
+            echo "Error deleting animal: " . htmlspecialchars($e['message']);
+        }
     }
 }
 ?>
+
 
 <!DOCTYPE html>
 <html lang="en">
@@ -91,6 +101,8 @@ if (isset($_GET['delete_animal'])) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Animal Management</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="path/to/style2.css">
+
     <script>
         // JavaScript function to hide success message after 3 seconds
         window.onload = function() {
@@ -133,37 +145,37 @@ if (isset($_GET['delete_animal'])) {
     </div>
 
     <!-- Animals Table -->
-	<table class="table table-bordered table-striped">
-		<thead>
-			<tr>
-				<th>Farm Name</th>
-				<th>Animal Type</th>
-				<th>Health Status</th>
-				<th>Actions</th>
-			</tr>
-		</thead>
-		<tbody>
-			<?php if (!empty($animals)): ?>
-				<?php foreach ($animals as $animal): ?>
-					<tr>
-						<td><?= htmlspecialchars($animal['FARMNAME'] ?? 'N/A') ?></td>
-						<td><?= htmlspecialchars($animal['ANIMALTYPENAME'] ?? 'N/A') ?></td>
-						<td><?= htmlspecialchars($animal['HEALTHSTATUS'] ?? 'N/A') ?></td>
-						<td>
-							<!-- Delete button with confirmation -->
-							<a href="javascript:void(0);" onclick="confirmDelete(<?= htmlspecialchars($animal['ANIMALID']) ?>)" class="btn btn-danger btn-sm">Delete</a>
-						</td>
-					</tr>
-				<?php endforeach; ?>
-			<?php else: ?>
-				<tr>
-					<td colspan="4" class="text-center">No animals found.</td>
-				</tr>
-			<?php endif; ?>
-		</tbody>
-	</table>
-
-
+    <table class="table table-bordered table-striped">
+        <thead>
+            <tr>
+                <th>User ID</th>
+                <th>Farm Name</th>
+                <th>Animal Type</th>
+                <th>Health Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            <?php if (!empty($animals)): ?>
+                <?php foreach ($animals as $animal): ?>
+                    <tr>
+                        <td><?= htmlspecialchars($animal['USER_ID'] ?? 'N/A') ?></td>
+                        <td><?= htmlspecialchars($animal['FARMNAME'] ?? 'N/A') ?></td>
+                        <td><?= htmlspecialchars($animal['ANIMALTYPENAME'] ?? 'N/A') ?></td>
+                        <td><?= htmlspecialchars($animal['HEALTHSTATUS'] ?? 'N/A') ?></td>
+                        <td>
+                            <!-- Delete button with confirmation -->
+                            <a href="javascript:void(0);" onclick="confirmDelete(<?= htmlspecialchars($animal['ANIMALID']) ?>)" class="btn btn-danger btn-sm">Delete</a>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+            <?php else: ?>
+                <tr>
+                    <td colspan="5" class="text-center">No animals found.</td>
+                </tr>
+            <?php endif; ?>
+        </tbody>
+    </table>
 </div>
 
 <!-- Add Animal Modal -->
@@ -176,6 +188,23 @@ if (isset($_GET['delete_animal'])) {
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
+                    <!-- Select User -->
+                    <div class="mb-3">
+                        <label for="user_id" class="form-label">Select User</label>
+                        <select class="form-select" id="user_id" name="user_id" required>
+                            <?php
+                            // Fetch all users from the database
+                            $query = "SELECT tbl_user_id, first_name FROM tbl_user";
+                            $stid = oci_parse($conn, $query);
+                            oci_execute($stid);
+                            while ($user = oci_fetch_assoc($stid)) {
+                                echo "<option value='".htmlspecialchars($user['TBL_USER_ID'])."'>".htmlspecialchars($user['TBL_USER_ID'] . '-' . $user['FIRST_NAME'])."</option>";
+                            }
+                            ?>
+                        </select>
+                    </div>
+
+                    <!-- Select Farm -->
                     <div class="mb-3">
                         <label for="farm_id" class="form-label">Select Farm</label>
                         <select class="form-select" id="farm_id" name="farm_id" required>
@@ -189,6 +218,8 @@ if (isset($_GET['delete_animal'])) {
                             ?>
                         </select>
                     </div>
+
+                    <!-- Select Animal Type -->
                     <div class="mb-3">
                         <label for="animal_type_id" class="form-label">Select Animal Type</label>
                         <select class="form-select" id="animal_type_id" name="animal_type_id" required>
@@ -202,10 +233,17 @@ if (isset($_GET['delete_animal'])) {
                             ?>
                         </select>
                     </div>
+
+                    
+                    <!-- Health Status -->
                     <div class="mb-3">
                         <label for="health_status" class="form-label">Health Status</label>
-                        <input type="text" class="form-control" id="health_status" name="health_status" required>
+                        <select class="form-select" id="health_status" name="health_status" required>
+                            <option value="Healthy">Healthy</option>
+                            <option value="Sick">Sick</option>
+                        </select>
                     </div>
+
                 </div>
                 <div class="modal-footer">
                     <button type="submit" class="btn btn-primary" name="add_animal">Add Animal</button>
