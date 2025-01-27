@@ -37,11 +37,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_tool'])) {
     oci_bind_by_name($stmt, ':tool_name', $tool_name);
     oci_bind_by_name($stmt, ':tool_type', $tool_type);
 
-    oci_execute($stmt);
-    oci_commit($conn);  // Ensure data is committed
-
-    header("Location: tool.php");
-    exit();
+    if (oci_execute($stmt)) {
+        oci_commit($conn);
+        $_SESSION['alert_type'] = 'success';
+        $_SESSION['message'] = 'New Request added successfully!';
+        header("Location: tool.php"); // Redirect to reload the page
+        exit();
+    } else {
+        $_SESSION['alert_type'] = 'error';
+        $_SESSION['message'] = 'Failed to add the produce. Please try again.';
+    }
 }
 
 // Handle delete tool request
@@ -53,11 +58,17 @@ if (isset($_GET['delete_tool'])) {
     
     oci_bind_by_name($stmt, ':tool_id', $tool_id);
     oci_bind_by_name($stmt, ':user_id', $user_id);
-    oci_execute($stmt);
-    oci_commit($conn);
-
-    header("Location: tool.php");
-    exit();
+    
+    if (oci_execute($stmt)) {  
+        oci_commit($conn);
+        $_SESSION['alert_type'] = 'success';
+        $_SESSION['message'] = 'Request deleted successfully!';
+        header("Location: tool.php"); // Redirect to reload the page
+        exit();
+    } else {
+        $_SESSION['alert_type'] = 'error';
+        $_SESSION['message'] = 'Failed to delete the produce. Please try again.';
+    }
 }
 ?>
 
@@ -72,6 +83,16 @@ if (isset($_GET['delete_tool'])) {
 <body>
 <div class="container my-4">
     <h2 class="text-center">Tool Management</h2>
+
+    <!-- Display success or error message -->
+    <?php if (isset($_SESSION['message'])): ?>
+        <div class="alert alert-<?php echo ($_SESSION['alert_type'] == 'success') ? 'success' : 'danger'; ?> mt-3" role="alert" id="message">
+            <?php echo htmlspecialchars($_SESSION['message']); ?>
+        </div>
+        <?php unset($_SESSION['message']); ?>
+        <?php unset($_SESSION['alert_type']); ?>
+    <?php endif; ?>
+
     <div class="text-end mb-3">
         <button class="btn btn-dark" data-bs-toggle="modal" data-bs-target="#addToolModal">Request Tool</button>
     </div>
@@ -138,5 +159,18 @@ if (isset($_GET['delete_tool'])) {
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+    // Automatically hide the alert after 2 seconds
+    window.onload = function() {
+        const message = document.getElementById('message');
+        if (message) {
+            setTimeout(function() {
+                message.style.display = 'none';
+            }, 2000);  // 2000 milliseconds = 2 seconds
+        }
+    };
+</script>
+
 </body>
 </html>
