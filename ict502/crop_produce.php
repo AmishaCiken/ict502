@@ -47,16 +47,47 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_cropproduce'])) {
     oci_bind_by_name($stmt, ':quantity', $quantity);
     oci_bind_by_name($stmt, ':crop_storage_location', $crop_storage_location);
 
-    
     if (oci_execute($stmt)) {
         oci_commit($conn);
         $_SESSION['alert_type'] = 'success';
-        $_SESSION['message'] = 'Crop added successfully!';
+        $_SESSION['message'] = 'Crop produce added successfully!';
         header("Location: crop_produce.php"); // Redirect to reload the page
         exit();
     } else {
         $_SESSION['alert_type'] = 'error';
         $_SESSION['message'] = 'Failed to add the produce. Please try again.';
+    }
+}
+
+// Handle edit crop produce
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_cropproduce'])) {
+    $cropproduce_id = $_POST['cropproduce_id'];
+    $crop_id = $_POST['crop_id'];
+    $quantity = $_POST['quantity'];
+    $crop_storage_location = $_POST['crop_storage_location'];
+
+    $query = "UPDATE CropProduce 
+              SET CropID = :crop_id, 
+                  Quantity = :quantity, 
+                  CropStorageLocation = :crop_storage_location 
+              WHERE CropProduceID = :cropproduce_id AND user_id = :user_id";
+
+    $stmt = oci_parse($conn, $query);
+    oci_bind_by_name($stmt, ':crop_id', $crop_id);
+    oci_bind_by_name($stmt, ':quantity', $quantity);
+    oci_bind_by_name($stmt, ':crop_storage_location', $crop_storage_location);
+    oci_bind_by_name($stmt, ':cropproduce_id', $cropproduce_id);
+    oci_bind_by_name($stmt, ':user_id', $user_id);
+
+    if (oci_execute($stmt)) {
+        oci_commit($conn);
+        $_SESSION['alert_type'] = 'success';
+        $_SESSION['message'] = 'Crop produce updated successfully!';
+        header("Location: crop_produce.php"); // Redirect to reload the page
+        exit();
+    } else {
+        $_SESSION['alert_type'] = 'error';
+        $_SESSION['message'] = 'Failed to update the produce. Please try again.';
     }
 }
 
@@ -69,11 +100,11 @@ if (isset($_GET['delete_cropproduce'])) {
 
     oci_bind_by_name($stmt, ':cropproduce_id', $cropproduce_id);
     oci_bind_by_name($stmt, ':user_id', $user_id);
-    
-    if (oci_execute($stmt)) {  
+
+    if (oci_execute($stmt)) {
         oci_commit($conn);
         $_SESSION['alert_type'] = 'success';
-        $_SESSION['message'] = 'Crop deleted successfully!';
+        $_SESSION['message'] = 'Crop produce deleted successfully!';
         header("Location: crop_produce.php"); // Redirect to reload the page
         exit();
     } else {
@@ -139,8 +170,57 @@ if (isset($_GET['delete_cropproduce'])) {
                     <td><?= htmlspecialchars($produce['CROPSTORAGELOCATION']) ?></td>
                     <td>
                         <a href="?delete_cropproduce=<?= $produce['CROPPRODUCEID'] ?>" class="btn btn-danger btn-sm">Delete</a>
+                        <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#editCropProduceModal<?= $produce['CROPPRODUCEID'] ?>">Edit</button>
                     </td>
                 </tr>
+
+                <!-- Edit Crop Produce Modal for each produce -->
+                <div class="modal fade" id="editCropProduceModal<?= $produce['CROPPRODUCEID'] ?>" tabindex="-1" aria-labelledby="editCropProduceModalLabel" aria-hidden="true">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <form method="POST" action="">
+                                <div class="modal-header">
+                                    <h5 class="modal-title" id="editCropProduceModalLabel">Edit Crop Produce</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <input type="hidden" name="cropproduce_id" value="<?= $produce['CROPPRODUCEID'] ?>">
+                                    <div class="mb-3">
+                                        <label for="crop_id" class="form-label">Select Crop</label>
+                                        <select class="form-select" id="crop_id" name="crop_id" required>
+                                            <?php
+                                            // Fetch list of crops with their type from the database
+                                            $query = "SELECT Crop.CropID, CropType.CropTypeName 
+                                                      FROM Crop 
+                                                      JOIN CropType ON Crop.CropTypeID = CropType.CropTypeID 
+                                                      WHERE Crop.user_id = :user_id";
+                                            $stmt = oci_parse($conn, $query);
+                                            oci_bind_by_name($stmt, ':user_id', $user_id);
+                                            oci_execute($stmt);
+                                            while (($crop = oci_fetch_assoc($stmt)) != false) {
+                                                $selected = ($crop['CROPID'] == $produce['CROPID']) ? 'selected' : '';
+                                                echo "<option value='" . htmlspecialchars($crop['CROPID']) . "' $selected>" . htmlspecialchars($crop['CROPID']) . " - " . htmlspecialchars($crop['CROPTYPENAME']) . "</option>";
+                                            }
+                                            ?>
+                                        </select>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="quantity" class="form-label">Quantity</label>
+                                        <input type="number" step="0.01" class="form-control" id="quantity" name="quantity" value="<?= htmlspecialchars($produce['QUANTITY']) ?>" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="crop_storage_location" class="form-label">Storage Location</label>
+                                        <input type="text" class="form-control" id="crop_storage_location" name="crop_storage_location" value="<?= htmlspecialchars($produce['CROPSTORAGELOCATION']) ?>" required>
+                                    </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="submit" class="btn btn-primary" name="edit_cropproduce">Save Changes</button>
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
             <?php endforeach; ?>
         <?php else: ?>
             <tr>
