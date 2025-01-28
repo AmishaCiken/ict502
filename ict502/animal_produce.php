@@ -61,7 +61,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_animalproduce']))
         $_SESSION['alert_type'] = 'error';
         $_SESSION['message'] = 'Failed to add the produce. Please try again.';
     }
+}
 
+// Handle edit animal produce
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_animalproduce'])) {
+    $animal_produce_id = $_POST['animal_produce_id'];
+    $animal_id = $_POST['animal_id'];
+    $quantity = $_POST['quantity'];
+    $storage_location = $_POST['storage_location'];
+    $produce_type = $_POST['produce_type'];
+
+    $query = "UPDATE AnimalProduce SET AnimalID = :animal_id, Quantity = :quantity, AnimalStorageLocation = :storage_location, ProduceType = :produce_type
+              WHERE AnimalProduceID = :animal_produce_id AND user_id = :user_id";
+
+    $stmt = oci_parse($conn, $query);
+    oci_bind_by_name($stmt, ':animal_produce_id', $animal_produce_id);
+    oci_bind_by_name($stmt, ':user_id', $user_id);
+    oci_bind_by_name($stmt, ':animal_id', $animal_id);
+    oci_bind_by_name($stmt, ':quantity', $quantity);
+    oci_bind_by_name($stmt, ':storage_location', $storage_location);
+    oci_bind_by_name($stmt, ':produce_type', $produce_type);
+
+    if (oci_execute($stmt)) {
+        oci_commit($conn);
+        $_SESSION['alert_type'] = 'success';
+        $_SESSION['message'] = 'Animal Produce updated successfully!';
+        header("Location: animal_produce.php");
+        exit();
+    } else {
+        $_SESSION['alert_type'] = 'error';
+        $_SESSION['message'] = 'Failed to update animal produce. Please try again.';
+    }
 }
 
 // Handle delete animal produce
@@ -85,7 +115,6 @@ if (isset($_GET['delete_animalproduce'])) {
         $_SESSION['message'] = 'Failed to delete the produce. Please try again.';
     }
 }
-
 
 ?>
 
@@ -144,6 +173,7 @@ if (isset($_GET['delete_animalproduce'])) {
                     <td><?= htmlspecialchars($produce['PRODUCETYPE']) ?></td>
                     <td>
                         <a href="?delete_animalproduce=<?= $produce['ANIMALPRODUCEID'] ?>" class="btn btn-danger btn-sm">Delete</a>
+                        <a href="?edit_animalproduce=<?= $produce['ANIMALPRODUCEID'] ?>" class="btn btn-warning btn-sm">Edit</a>
                     </td>
                 </tr>
             <?php endforeach; ?>
@@ -174,7 +204,7 @@ if (isset($_GET['delete_animalproduce'])) {
                             // Fetch list of animals with their type from the database
                             $query = "SELECT Animal.AnimalID, AnimalType.AnimalTypeName 
                                       FROM Animal 
-                                      JOIN AnimalType ON Animal.AnimalTypeID = AnimalType.AnimalTypeID 
+                                      JOIN AnimalType ON Animal.AnimalTypeID = AnimalType.AnimalTypeID
                                       WHERE Animal.user_id = :user_id";
                             $stmt = oci_parse($conn, $query);
                             oci_bind_by_name($stmt, ':user_id', $user_id);
@@ -199,7 +229,7 @@ if (isset($_GET['delete_animalproduce'])) {
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="submit" class="btn btn-primary" name="add_animalproduce">Add Animal Produce</button>
+                    <button type="submit" class="btn btn-primary" name="add_animalproduce">Save Produce</button>
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                 </div>
             </form>
@@ -207,19 +237,16 @@ if (isset($_GET['delete_animalproduce'])) {
     </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js"></script>
+</div>
 
+<script src="bootstrap.bundle.min.js"></script>
 <script>
-    // Automatically hide the alert after 2 seconds
-    window.onload = function() {
-        const message = document.getElementById('message');
+    setTimeout(function() {
+        var message = document.getElementById('message');
         if (message) {
-            setTimeout(function() {
-                message.style.display = 'none';
-            }, 2000);  // 2000 milliseconds = 2 seconds
+            message.style.display = 'none';
         }
-    };
+    }, 5000);  // Hide alert message after 5 seconds
 </script>
-
 </body>
 </html>
