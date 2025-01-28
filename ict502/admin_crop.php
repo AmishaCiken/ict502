@@ -1,10 +1,6 @@
 <?php
 session_start();
 
-if (!isset($_SESSION['user_id'])) {
-    header("Location: index.php");
-    exit();
-}
 
 include('./conn/conn.php');
 error_reporting(E_ALL);
@@ -320,7 +316,8 @@ if (isset($_GET['edit_id'])) {
                     </div>
                 </div>
             </div>
-
+            <script src="script.js"></script>
+            <script src="bootstrap.bundle.js"></script>
             <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
         </div>
     </main>
