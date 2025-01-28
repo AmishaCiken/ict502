@@ -1,13 +1,6 @@
 <?php
 session_start();
 
-// Check if the user is logged in
-if (!isset($_SESSION['user_id'])) {
-    header("Location: index.php");
-    exit();
-}
-
-$user_id = $_SESSION['user_id'];
 
 // database connection
 include('./conn/conn.php');
@@ -134,8 +127,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_animal'])) {
         echo "Error updating animal: " . htmlspecialchars($e['message']);
     }
 }
-?>
-
 ?>
 
 
@@ -381,7 +372,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_animal'])) {
         </div>
     </div>
 </div>
-
+<script src="script.js"></script>
+    <script src="bootstrap.bundle.js"></script>
 <script>
     // Show the edit modal when it exists
     document.addEventListener('DOMContentLoaded', function() {

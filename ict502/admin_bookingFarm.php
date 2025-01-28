@@ -202,6 +202,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         </div>
     </main>
 
+    <script src="script.js"></script>
     <script src="bootstrap.bundle.js"></script>
     <script>
         function confirmDelete(bookingId) {

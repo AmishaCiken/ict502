@@ -1,12 +1,6 @@
 <?php
 session_start();
 
-if (!isset($_SESSION['user_id'])) {
-    header("Location: index.php");
-    exit();
-}
-
-$user_id = $_SESSION['user_id'];
 include('./conn/conn.php');  // Ensure the database connection is included
 
 // Fetch the user's animal produces from the database
@@ -99,11 +93,20 @@ if (isset($_GET['delete_animalproduce'])) {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Animal Produce Management</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <title>Animal Produce</title>
+    <link rel="stylesheet" href="bootstrap.css">
+    <link rel="stylesheet" href="style3.css">
+    <link rel="stylesheet" href="https://pro.fontawesome.com/releases/v5.10.0/css/all.css" crossorigin="anonymous" />
 </head>
-<body>
+<body class="bg-content">
+    <main class="dashboard d-flex">
+        <!-- Sidebar -->
+        <?php include "sidebar.php"; ?>
+        <!-- Content Page -->
+        <div class="container-fluid px">
+            <?php include "header.php"; ?>
 <div class="container my-4">
     <h2 class="text-center">Animal Produce Management</h2>
 

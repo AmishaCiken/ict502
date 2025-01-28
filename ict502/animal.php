@@ -1,12 +1,4 @@
 <?php
-session_start();
-if (!isset($_SESSION['user_id'])) {
-    header("Location: index.php");
-    exit();
-}
-
-// Ensure the database connection is included
-$user_id = $_SESSION['user_id'];
 include('./conn/conn.php');  
 
 $query = "SELECT Animal.AnimalID, Farm.FarmName, AnimalType.AnimalTypeName, Animal.HealthStatus 

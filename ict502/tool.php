@@ -1,12 +1,6 @@
 <?php
 session_start();
 
-// Ensure user is logged in
-if (!isset($_SESSION['user_id'])) {
-    header("Location: index.php");
-    exit();
-}
-$user_id = $_SESSION['user_id'];  // Critical missing line!
 
 include('./conn/conn.php');  // Ensure the database connection is included
 
@@ -87,7 +81,7 @@ if (isset($_GET['delete_tool'])) {
 <body class="bg-content">
     <main class="dashboard d-flex">
         <!-- Sidebar -->
-        <?php include "admin_sidebar.php"; ?>
+        <?php include "sidebar.php"; ?>
         <!-- Content Page -->
         <div class="container-fluid px">
             <?php include "header.php"; ?>

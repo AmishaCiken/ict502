@@ -1,11 +1,6 @@
 <?php
 session_start();
 
-if (!isset($_SESSION['user_id'])) {
-    header("Location: index.php");
-    exit();
-}
-
 include('./conn/conn.php');
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
@@ -220,7 +215,7 @@ if (isset($_GET['edit_id'])) {
         </tbody>
     </table>
 </div>
-\<!-- Edit Modal -->
+<!-- Edit Modal -->
 <div class="modal fade" id="editModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -310,7 +305,8 @@ if (isset($_GET['edit_id'])) {
         </div>
     </div>
 </div>
-
+<script src="script.js"></script>
+    <script src="bootstrap.bundle.js"></script>
 <script>
     // Show edit modal when URL has edit_id
     document.addEventListener('DOMContentLoaded', function() {

@@ -44,7 +44,7 @@ include('conn/conn.php'); // Include the database connection
             </li>
 
             <li class="h7">
-                <a class="nav-link text-dark" href="admin_gitanimalproduce.php">
+                <a class="nav-link text-dark" href="admin_animalproduce.php">
                     <i class="fal fa-usd-square me-2"></i> <span>Animal Produce</span>
                 </a>
             </li>
